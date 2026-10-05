@@ -1,0 +1,60 @@
+{
+  "name": "App",
+  "options": {
+    "bundleIdPrefix": "com.example"
+  },
+  "targets": {
+    "App": {
+      "type": "application",
+      "platform": "iOS",
+      "deploymentTarget": "15.0",
+      "sources": [
+        "Sources",
+        {
+          "path": "www",
+          "type": "folder",
+          "buildPhase": "resources"
+        }
+      ],
+      "settings": {
+        "base": {
+          "PRODUCT_BUNDLE_IDENTIFIER": "com.example.mojaaplikacja",
+          "MARKETING_VERSION": "1.0.0",
+          "CURRENT_PROJECT_VERSION": "1",
+          "TARGETED_DEVICE_FAMILY": "1,2",
+          "SWIFT_VERSION": "5.0",
+          "INFOPLIST_KEY_CFBundleDisplayName": "HTML  IPA Builder ",
+          "ASSETCATALOG_COMPILER_APPICON_NAME": "AppIcon"
+        }
+      },
+      "info": {
+        "path": "Info.plist",
+        "properties": {
+          "CFBundleDisplayName": "HTML  IPA Builder ",
+          "UILaunchScreen": {},
+          "UIRequiresFullScreen": false,
+          "UIStatusBarHidden": true,
+          "UIViewControllerBasedStatusBarAppearance": false,
+          "UIFileSharingEnabled": false,
+          "LSSupportsOpeningDocumentsInPlace": false,
+          "UISupportedInterfaceOrientations": [
+            "UIInterfaceOrientationPortrait",
+            "UIInterfaceOrientationLandscapeLeft",
+            "UIInterfaceOrientationLandscapeRight"
+          ],
+          "UISupportedInterfaceOrientations~ipad": [
+            "UIInterfaceOrientationPortrait",
+            "UIInterfaceOrientationLandscapeLeft",
+            "UIInterfaceOrientationLandscapeRight",
+            "UIInterfaceOrientationPortraitUpsideDown"
+          ],
+          "NSAppTransportSecurity": {
+            "NSAllowsArbitraryLoads": true,
+            "NSAllowsArbitraryLoadsInWebContent": true
+          },
+          "ITSAppUsesNonExemptEncryption": false
+        }
+      }
+    }
+  }
+}
