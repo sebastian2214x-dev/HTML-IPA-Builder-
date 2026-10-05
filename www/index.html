@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="pl"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>HTML → IPA Builder</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+:root{--bg:#0f1420;--card:#192031;--tx:#e8ecf5;--mu:#8f9bb5;--ac:#3b82f6;--ok:#22c55e;--er:#ef4444;--bd:#2a3550}
+@media(prefers-color-scheme:light){:root{--bg:#f2f4f9;--card:#fff;--tx:#141a29;--mu:#5d6882;--bd:#dde2ee}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:16px system-ui,sans-serif;padding:env(safe-area-inset-top) 0 90px}
+header{padding:18px 16px 6px}h1{margin:0;font-size:22px}header p{margin:4px 0 0;color:var(--mu);font-size:14px}
+main{padding:10px 14px;max-width:720px;margin:auto}section{display:none}section.on{display:block}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:14px;margin:10px 0}
+label{display:block;font-size:13px;color:var(--mu);margin:10px 0 4px}
+input,select,textarea{width:100%;padding:11px;border-radius:10px;border:1px solid var(--bd);background:var(--bg);color:var(--tx);font:inherit}
+textarea{min-height:200px;font:13px monospace}
+button{padding:12px 16px;border:0;border-radius:10px;background:var(--ac);color:#fff;font:600 15px inherit;font-family:inherit;margin:6px 6px 0 0}
+button.s{background:var(--bd);color:var(--tx)}button:disabled{opacity:.5}
+nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:var(--card);border-top:1px solid var(--bd);padding-bottom:env(safe-area-inset-bottom)}
+nav button{flex:1;margin:0;border-radius:0;background:none;color:var(--mu);font-size:11px;padding:9px 2px}nav button.on{color:var(--ac)}nav b{display:block;font-size:20px}
+.perm{display:flex;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--bd)}.perm:last-child{border:0}
+.perm input[type=checkbox]{width:22px;height:22px;flex:none}.perm div{flex:1}.perm small{color:var(--mu);display:block;font-size:12px}
+.perm input[type=text]{margin-top:6px;padding:8px;font-size:13px}
+#log{background:#000;color:#9fe;font:12px monospace;padding:10px;border-radius:10px;min-height:120px;max-height:300px;overflow:auto;white-space:pre-wrap}
+.note{font-size:13px;color:var(--mu);line-height:1.45}.bar{height:8px;background:var(--bd);border-radius:9px;overflow:hidden;margin:10px 0}.bar i{display:block;height:100%;width:0;background:var(--ac);transition:.3s}
+:root[data-theme=dark]{--bg:#0f1420;--card:#192031;--tx:#e8ecf5;--mu:#8f9bb5;--bd:#2a3550}
+:root[data-theme=light]{--bg:#f2f4f9;--card:#fff;--tx:#141a29;--mu:#5d6882;--bd:#dde2ee}
+.toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:var(--tx);color:var(--bg);padding:10px 16px;border-radius:20px;font-size:14px;opacity:0;transition:.3s;pointer-events:none;z-index:9}.toast.on{opacity:1}
+.pf{padding:6px 0;font-size:14px;border-bottom:1px solid var(--bd)}.pf:last-child{border:0}
+.chips button{padding:7px 12px;font-size:13px;border-radius:20px}
+a.btn{display:inline-block;padding:9px 12px;border-radius:10px;background:var(--bd);color:var(--tx);text-decoration:none;font-size:14px;margin:6px 6px 0 0}
+button.cp{padding:9px 10px;margin:6px 6px 0 0}
+pre.pv{background:var(--bg);border:1px solid var(--bd);border-radius:10px;padding:10px;font-size:11px;max-height:260px;overflow:auto;white-space:pre-wrap;display:none}
+.hi{font-size:13px;padding:6px 0;border-bottom:1px solid var(--bd)}.hd{font-size:15px;font-weight:700;margin:14px 0 2px}.hd:first-child{margin-top:0}
+</style></head><body>
+<header><h1>📱 HTML → IPA Builder <small style="font-size:12px;color:var(--mu)">v2.0</small></h1><p>iPhone i iPad · prawdziwy plik .ipa budowany na macOS w chmurze</p></header>
+<main>
+<section id="t0">
+ <div class="card"><label>Nazwa aplikacji</label><input id="name" value="Moja Aplikacja">
+ <label>Bundle ID</label><input id="bid" value="com.example.mojaaplikacja" autocapitalize="off">
+ <label>Wersja</label><input id="ver" value="1.0.0">
+ <label>Urządzenia</label><select id="dev"><option value="1,2">iPhone + iPad</option><option value="1">Tylko iPhone</option><option value="2">Tylko iPad</option></select>
+ <label>Orientacja</label><select id="ori"><option value="all">Dowolna</option><option value="portrait">Pionowa</option><option value="landscape">Pozioma</option></select>
+ <label>Minimalny iOS</label><select id="min"><option>13.0</option><option>14.0</option><option selected>15.0</option><option>16.0</option><option>17.0</option></select>
+ <label>Ikona aplikacji (PNG/JPG, min. 512×512)</label><input type="file" id="ico" accept="image/png,image/jpeg" hidden><div style="display:flex;gap:12px;align-items:center"><img id="icoP" width="64" height="64" style="border-radius:14px;background:var(--bd)" alt=""><button class="s" onclick="ico.click()">🖼️ Wybierz ikonę</button></div></div>
+</section>
+<section id="t1">
+ <div class="card"><label>Kod HTML (wklej lub wczytaj plik)</label><textarea id="html" placeholder="<!DOCTYPE html>..."></textarea>
+ <input type="file" id="file" accept=".html,.htm" hidden><button class="s" onclick="file.click()">📂 Wczytaj plik HTML</button><button class="s" onclick="sample()">✨ Przykład</button>
+ <p class="note" id="hinfo"></p></div>
+</section>
+<section id="t2">
+ <div class="card"><b>Uprawnienia urządzenia</b><p class="note">Zaznaczone trafiają do Info.plist wraz z tekstem, który iOS pokaże użytkownikowi w oknie zgody.</p><input id="psearch" placeholder="🔍 Szukaj uprawnienia…" oninput="pfilter()"><div class="chips" style="margin:8px 0"><button class="s" onclick="pset('all')">Wszystkie</button><button class="s" onclick="pset('media')">Multimedia</button><button class="s" onclick="pset('none')">Żadne</button></div><p class="note" id="pcnt"></p><div id="perms"></div></div>
+ <div class="card"><b>📂 Dostęp do folderu</b>
+ <p class="note">iOS nie ma stałego uprawnienia do folderów — użytkownik wskazuje folder w systemowym oknie, a aplikacja zapamiętuje wybór. Po włączeniu Twój kod dostaje w JavaScript obiekt <b>IPAFolder</b>.</p>
+ <div class="perm"><input type="checkbox" id="f_read"><div>📖 Odczyt z folderu<small>IPAFolder.pick() · list() · read(nazwa)</small></div></div>
+ <div class="perm"><input type="checkbox" id="f_write"><div>💾 Zapis do folderu<small>IPAFolder.write(nazwa, tekst) · writeBase64(nazwa, dane)</small></div></div>
+ <pre class="pv" style="display:block">await IPAFolder.pick();   // okno wyboru folderu
+await IPAFolder.write('notatka.txt', 'Cześć!');
+const l = (await IPAFolder.list()).data;
+const t = (await IPAFolder.read('notatka.txt')).data;</pre>
+ <p class="note">Każda funkcja zwraca {ok, data, error}. Odczyt i zapis działają niezależnie — wyłączona funkcja zwraca błąd. Włączenie dodaje też udostępnianie plików w aplikacji Pliki.</p></div>
+ <div class="card"><b>Opcje</b>
+ <div class="perm"><input type="checkbox" id="o_http" checked><div>Zezwól na HTTP (App Transport Security)</div></div>
+ <div class="perm"><input type="checkbox" id="o_fs"><div>Udostępnianie plików (aplikacja Pliki)</div></div>
+ <div class="perm"><input type="checkbox" id="o_status" checked><div>Ukryj pasek statusu</div></div>
+ <div class="perm"><input type="checkbox" id="o_inplace"><div>Otwieranie plików w miejscu<small>LSSupportsOpeningDocumentsInPlace</small></div></div>
+ <div class="perm"><input type="checkbox" id="o_docb"><div>Przeglądarka dokumentów (Pliki)<small>UISupportsDocumentBrowser</small></div></div>
+ <div class="perm"><input type="checkbox" id="o_wifi"><div>Utrzymuj połączenie Wi-Fi<small>UIRequiresPersistentWiFi</small></div></div>
+ <p class="note">ℹ️ iOS nie ma osobnego uprawnienia „pamięć”: aplikacja ma własny sandbox, a localStorage i IndexedDB działają bez zgody. Dostęp do plików włączasz opcją „Udostępnianie plików” i przeglądarką dokumentów, a do zdjęć uprawnieniami Zdjęcia.</p></div>
+</section>
+<section id="t3">
+ <div class="card"><b>✔️ Kontrola przed buildem</b><div id="pre" style="margin-top:6px"></div></div>
+ <div class="card"><b>Chmurowy build (GitHub Actions)</b>
+ <p class="note">Apple wymaga macOS + Xcode do kompilacji, więc przeglądarka wysyła projekt na darmowy runner macOS GitHuba i pobiera gotowy .ipa. Token (classic) musi mieć uprawnienia <b>repo</b> i <b>workflow</b>.</p>
+ <label>Token GitHub</label><input id="tok" type="password" autocomplete="off">
+ <label>Repozytorium (użytkownik/nazwa — zostanie utworzone, jeśli nie istnieje)</label><input id="repo" placeholder="jan/moje-ipa" autocapitalize="off">
+ <button onclick="cloud()" id="bcloud">☁️ Zbuduj IPA</button><button class="s" onclick="zipProj()">📦 Pobierz projekt (ZIP)</button><button class="s" onclick="copyLog()">📋 Kopiuj log</button>
+ <div class="bar"><i id="pb"></i></div><div id="log">Gotowy.</div><div id="out"></div></div>
+ <div class="card"><b>🕘 Historia buildów</b><div id="hist" class="note" style="margin-top:6px">Brak buildów.</div></div>
+ <div class="card note"><b>Podpis:</b> IPA z chmury jest niepodpisane. Zainstaluj je przez Sideloadly / AltStore / TrollStore albo podpisz własnym certyfikatem Apple Developer. Bez podpisu iOS nie uruchomi żadnej aplikacji — to ograniczenie Apple, nie narzędzia.</div>
+</section>
+<section id="t4">
+ <div class="card"><div class="hd">🎨 Wygląd narzędzia</div>
+ <label>Motyw</label><select id="s_theme"><option value="auto">Automatyczny</option><option value="dark">Ciemny</option><option value="light">Jasny</option></select>
+ <label>Kolor akcentu</label><input type="color" id="s_ac" value="#3b82f6" style="height:44px;padding:3px"></div>
+ <div class="card"><div class="hd">📱 Zachowanie aplikacji (WebView)</div>
+ <div class="perm"><input type="checkbox" id="s_zoom"><div>Zablokuj powiększanie (pinch-zoom)</div></div>
+ <div class="perm"><input type="checkbox" id="s_bounce"><div>Wyłącz efekt „gumy” przy przewijaniu</div></div>
+ <div class="perm"><input type="checkbox" id="s_swipe"><div>Gest przesunięcia wstecz/dalej</div></div>
+ <div class="perm"><input type="checkbox" id="s_ext" checked><div>Linki zewnętrzne otwieraj w Safari</div></div>
+ <div class="perm"><input type="checkbox" id="s_awake"><div>Nie wygaszaj ekranu</div></div>
+ <div class="perm"><input type="checkbox" id="s_inspect"><div>Web Inspector w Safari (debugowanie)<small>iOS 16.4+</small></div></div>
+ <label>Kolor tła / ekranu ładowania</label><input type="color" id="s_bg" value="#ffffff" style="height:44px;padding:3px">
+ <label>Dopisek do User-Agent (opcjonalnie)</label><input id="s_ua" placeholder="np. MojaApka/1.0" autocapitalize="off"></div>
+ <div class="card"><div class="hd">⚙️ Zaawansowane</div>
+ <div class="perm"><input type="checkbox" id="s_enc" checked><div>Deklaracja: brak własnego szyfrowania<small>ITSAppUsesNonExemptEncryption = false</small></div></div>
+ <label>Praca w tle</label>
+ <div class="perm"><input type="checkbox" class="bgm" id="b1" value="audio"><div>Audio</div></div>
+ <div class="perm"><input type="checkbox" class="bgm" id="b2" value="location"><div>Lokalizacja</div></div>
+ <div class="perm"><input type="checkbox" class="bgm" id="b3" value="fetch"><div>Pobieranie w tle</div></div>
+ <div class="perm"><input type="checkbox" class="bgm" id="b4" value="remote-notification"><div>Powiadomienia zdalne</div></div>
+ <div class="perm"><input type="checkbox" class="bgm" id="b5" value="bluetooth-central"><div>Bluetooth (central)</div></div>
+ <div class="perm"><input type="checkbox" class="bgm" id="b6" value="bluetooth-peripheral"><div>Bluetooth (peripheral)</div></div>
+ <div class="perm"><input type="checkbox" class="bgm" id="b7" value="external-accessory"><div>Akcesoria zewnętrzne</div></div>
+ <div class="perm"><input type="checkbox" class="bgm" id="b8" value="nearby-interaction"><div>Interakcja z pobliskimi urządzeniami</div></div>
+ <label>Schemat URL (np. mojaapka → mojaapka://)</label><input id="scheme" placeholder="mojaapka" autocapitalize="off"></div>
+ <div class="card"><div class="hd">💾 Projekt i dane</div>
+ <input type="file" id="pfile" accept=".json" hidden>
+ <button onclick="exportP()">⬇️ Zapisz profil</button><button class="s" onclick="pfile.click()">⬆️ Wczytaj profil</button><button class="s" onclick="prev()">🔎 Podgląd konfiguracji</button>
+ <pre class="pv" id="pv"></pre>
+ <div class="perm" style="margin-top:10px"><input type="checkbox" id="s_pub"><div>Twórz repozytorium jako publiczne<small>Bez limitu minut Actions, ale kod HTML będzie widoczny dla wszystkich</small></div></div>
+ <div class="perm"><input type="checkbox" id="s_rem"><div>Zapamiętaj token GitHub na tym urządzeniu<small>Zapisany lokalnie, niezaszyfrowany — używaj tokenu z minimalnymi uprawnieniami</small></div></div>
+ <button class="s" style="background:var(--er);color:#fff" onclick="resetAll()">🗑️ Ustawienia fabryczne</button>
+ <p class="note">Ustawienia zapisują się automatycznie w tym urządzeniu.</p></div>
+</section>
+<section id="t5" class="on">
+ <div class="card"><b id="gt">Gotowość do buildu</b><div class="bar"><i id="gb"></i></div><div id="gs" class="note"></div></div>
+ <div id="guide"></div>
+</section>
+<div class="toast" id="toast"></div>
+</main>
+<nav id="nav"><button class="on" data-t="5"><b>🧭</b>Start</button><button data-t="0"><b>⚙️</b>Aplikacja</button><button data-t="1"><b>📝</b>Kod</button><button data-t="2"><b>🔐</b>Uprawnienia</button><button data-t="3"><b>🚀</b>Build</button><button data-t="4"><b>🛠️</b>Ustawienia</button></nav>
+<script>
+const $=id=>document.getElementById(id);
+const PERMS=[
+["NSCameraUsageDescription","📷 Aparat","Aplikacja potrzebuje dostępu do aparatu."],
+["NSMicrophoneUsageDescription","🎤 Mikrofon","Aplikacja potrzebuje dostępu do mikrofonu."],
+["NSPhotoLibraryUsageDescription","🖼️ Zdjęcia (odczyt)","Aplikacja potrzebuje dostępu do zdjęć."],
+["NSPhotoLibraryAddUsageDescription","💾 Zdjęcia (zapis)","Aplikacja zapisuje zdjęcia w galerii."],
+["NSLocationWhenInUseUsageDescription","📍 Lokalizacja (w użyciu)","Aplikacja używa lokalizacji."],
+["NSLocationAlwaysAndWhenInUseUsageDescription","📍 Lokalizacja (zawsze)","Aplikacja używa lokalizacji w tle."],
+["NSFaceIDUsageDescription","🙂 Face ID","Aplikacja używa Face ID do uwierzytelnienia."],
+["NSContactsUsageDescription","👥 Kontakty","Aplikacja potrzebuje dostępu do kontaktów."],
+["NSCalendarsUsageDescription","📅 Kalendarz","Aplikacja potrzebuje dostępu do kalendarza."],
+["NSRemindersUsageDescription","✅ Przypomnienia","Aplikacja potrzebuje dostępu do przypomnień."],
+["NSBluetoothAlwaysUsageDescription","🔵 Bluetooth","Aplikacja łączy się z urządzeniami Bluetooth."],
+["NSLocalNetworkUsageDescription","🌐 Sieć lokalna","Aplikacja łączy się z urządzeniami w sieci lokalnej."],
+["NSMotionUsageDescription","🧭 Ruch i czujniki","Aplikacja odczytuje czujniki ruchu."],
+["NSSpeechRecognitionUsageDescription","🗣️ Rozpoznawanie mowy","Aplikacja używa rozpoznawania mowy."],
+["NSHealthShareUsageDescription","❤️ Zdrowie (odczyt)","Aplikacja odczytuje dane zdrowotne."],
+["NSHealthUpdateUsageDescription","❤️ Zdrowie (zapis)","Aplikacja zapisuje dane zdrowotne."],
+["NSAppleMusicUsageDescription","🎵 Muzyka i multimedia","Aplikacja potrzebuje dostępu do biblioteki muzyki."],
+["NSUserTrackingUsageDescription","📊 Śledzenie (ATT)","Dane służą do personalizacji treści."],
+["NSSiriUsageDescription","🎙️ Siri","Aplikacja integruje się z Siri."],
+["NSNFCReaderUsageDescription","📡 NFC","Aplikacja odczytuje tagi NFC."],
+["NSHomeKitUsageDescription","🏠 HomeKit","Aplikacja steruje urządzeniami domowymi."],
+["NSBluetoothPeripheralUsageDescription","🔵 Bluetooth (peryferia)","Aplikacja udostępnia usługi Bluetooth."],
+["NSCalendarsFullAccessUsageDescription","📅 Kalendarz (pełny, iOS 17)","Aplikacja ma pełny dostęp do kalendarza."],
+["NSRemindersFullAccessUsageDescription","✅ Przypomnienia (pełny, iOS 17)","Aplikacja ma pełny dostęp do przypomnień."],
+["NSFocusStatusUsageDescription","🔕 Status Skupienia","Aplikacja odczytuje status Skupienia."],
+["NSGKFriendListUsageDescription","🎮 Game Center – znajomi","Aplikacja odczytuje listę znajomych."],
+["NSVideoSubscriberAccountUsageDescription","📺 Konto telewizyjne","Aplikacja weryfikuje abonament TV."],
+["NSFileProviderDomainUsageDescription","📁 Dostawca plików","Aplikacja korzysta z plików w chmurze."],
+["NSCalendarsWriteOnlyAccessUsageDescription","📅 Kalendarz (tylko zapis, iOS 17)","Aplikacja dodaje wydarzenia do kalendarza."],
+["NSNearbyInteractionUsageDescription","📶 Urządzenia w pobliżu (U1)","Aplikacja wykrywa urządzenia w pobliżu."],
+["NSNearbyInteractionAllowOnceUsageDescription","📶 Urządzenia w pobliżu (jednorazowo)","Aplikacja jednorazowo wykrywa urządzenia w pobliżu."],
+["NSHealthClinicalHealthRecordsShareUsageDescription","🩺 Dokumentacja medyczna","Aplikacja odczytuje dokumentację zdrowotną."],
+["NSLocationAlwaysUsageDescription","📍 Lokalizacja zawsze (starsze iOS)","Aplikacja używa lokalizacji w tle."],
+["NSIdentityUsageDescription","🪪 Tożsamość (Wallet)","Aplikacja weryfikuje tożsamość."]];
+$('perms').innerHTML=PERMS.map((p,i)=>`<div class="perm" data-k="${p[0]} ${p[1]}"><input type="checkbox" id="p${i}" onchange="pcnt()"><div>${p[1]}<small>${p[0]}</small><input type="text" id="pt${i}" value="${p[2]}"></div></div>`).join('');
+$('nav').onclick=e=>{const b=e.target.closest('button');if(!b)return;document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('on',x===b));document.querySelectorAll('section').forEach((s,i)=>s.classList.toggle('on',i==b.dataset.t));if(b.dataset.t=='3')pre();if(b.dataset.t=='5')guide()};
+$('file').onchange=async e=>{const f=e.target.files[0];if(f){$('html').value=await f.text();upd()}};
+$('html').oninput=upd;function upd(){const h=$('html').value,w=[];if(!h){$('hinfo').textContent='';return}
+if(!/name=["']viewport/i.test(h))w.push('⚠️ brak meta viewport');
+const ex=(h.match(/(src|href)=["']https?:/gi)||[]).length;if(ex)w.push('ℹ️ '+ex+' zasobów zewnętrznych (wymagają internetu)');
+$('hinfo').textContent='Rozmiar: '+(h.length/1024).toFixed(1)+' KB'+(w.length?' · '+w.join(' · '):'')}
+function sample(){$('html').value='<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Test</title></head><body style="font-family:sans-serif;text-align:center;padding:60px"><h1>Działa! 🎉</h1><p>Moja pierwsza aplikacja iOS z HTML.</p></body></html>';upd()}
+const log=(m,p)=>{$('log').textContent+='\n'+m;$('log').scrollTop=1e9;if(p!=null)$('pb').style.width=p+'%'};
+const safe=s=>s.replace(/[^\w]/g,'')||'App';
+function check(){
+ if(!/^[A-Za-z][\w-]*(\.[A-Za-z][\w-]*)+$/.test($('bid').value))throw Error('Nieprawidłowy Bundle ID (np. com.firma.aplikacja)');
+ if(!$('html').value.trim())throw Error('Brak kodu HTML — wróć do zakładki Kod');
+ if(!/^\d+(\.\d+){0,2}$/.test($('ver').value))throw Error('Wersja musi mieć format 1.0.0')}
+function files(){
+ check();const info={CFBundleDisplayName:$('name').value,UILaunchScreen:{},UIRequiresFullScreen:false,UIStatusBarHidden:$('o_status').checked,UIViewControllerBasedStatusBarAppearance:false,UIFileSharingEnabled:$('o_fs').checked||FOLD_ON(),LSSupportsOpeningDocumentsInPlace:$('o_fs').checked||$('o_inplace').checked||FOLD_ON()};
+ const o=$('ori').value,P=['UIInterfaceOrientationPortrait'],L=['UIInterfaceOrientationLandscapeLeft','UIInterfaceOrientationLandscapeRight'];
+ info.UISupportedInterfaceOrientations=o=='portrait'?P:o=='landscape'?L:P.concat(L);
+ info['UISupportedInterfaceOrientations~ipad']=P.concat(L,['UIInterfaceOrientationPortraitUpsideDown']);
+ if($('o_http').checked)info.NSAppTransportSecurity={NSAllowsArbitraryLoads:true,NSAllowsArbitraryLoadsInWebContent:true};
+ if($('s_enc').checked)info.ITSAppUsesNonExemptEncryption=false;
+ if($('o_docb').checked)info.UISupportsDocumentBrowser=true;if($('o_wifi').checked)info.UIRequiresPersistentWiFi=true;
+ const bgm=[...document.querySelectorAll('.bgm:checked')].map(x=>x.value);if(bgm.length)info.UIBackgroundModes=bgm;
+ const sch=$('scheme').value.trim();if(sch)info.CFBundleURLTypes=[{CFBundleURLName:$('bid').value,CFBundleURLSchemes:[sch]}];
+ PERMS.forEach((p,i)=>{if($('p'+i).checked)info[p[0]]=$('pt'+i).value||p[2]});
+ if(info.NSLocationAlwaysAndWhenInUseUsageDescription&&!info.NSLocationWhenInUseUsageDescription)info.NSLocationWhenInUseUsageDescription=info.NSLocationAlwaysAndWhenInUseUsageDescription;
+ const proj={name:'App',options:{bundleIdPrefix:$('bid').value.split('.').slice(0,-1).join('.')},targets:{App:{type:'application',platform:'iOS',deploymentTarget:$('min').value,sources:['Sources',{path:'www',type:'folder',buildPhase:'resources'}],settings:{base:{PRODUCT_BUNDLE_IDENTIFIER:$('bid').value,MARKETING_VERSION:$('ver').value,CURRENT_PROJECT_VERSION:'1',TARGETED_DEVICE_FAMILY:$('dev').value,SWIFT_VERSION:'5.0',INFOPLIST_KEY_CFBundleDisplayName:$('name').value}},info:{path:'Info.plist',properties:info}}}};
+ let swift=`import UIKit
+import WebKit
+
+@main
+class AppDelegate: UIResponder, UIApplicationDelegate {
+    var window: UIWindow?
+    func application(_ a: UIApplication, didFinishLaunchingWithOptions o: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+        window = UIWindow(frame: UIScreen.main.bounds)
+        window?.rootViewController = WebVC()
+        window?.makeKeyAndVisible()
+        return true
+    }
+}
+
+class WebVC: UIViewController, WKUIDelegate, WKNavigationDelegate {
+    var web: WKWebView!
+    override var prefersStatusBarHidden: Bool { ${$('o_status').checked} }
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        view.backgroundColor = UIColor(red: ${bgc()[0]}, green: ${bgc()[1]}, blue: ${bgc()[2]}, alpha: 1)
+        let c = WKWebViewConfiguration()
+        c.allowsInlineMediaPlayback = true
+        c.mediaTypesRequiringUserActionForPlayback = []
+${SW('cfg')}${FCFG()}
+        c.preferences.setValue(true, forKey: "allowFileAccessFromFileURLs")
+        web = WKWebView(frame: view.bounds, configuration: c)
+        web.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        web.uiDelegate = self; web.navigationDelegate = self
+        web.scrollView.contentInsetAdjustmentBehavior = .never
+${SW('web')}
+        view.addSubview(web)
+        if let u = Bundle.main.url(forResource: "index", withExtension: "html", subdirectory: "www") {
+            web.loadFileURL(u, allowingReadAccessTo: u.deletingLastPathComponent())
+        }
+    }
+    @available(iOS 15.0, *)
+    func webView(_ w: WKWebView, requestMediaCapturePermissionFor o: WKSecurityOrigin, initiatedByFrame f: WKFrameInfo, type: WKMediaCaptureType, decisionHandler: @escaping (WKPermissionDecision) -> Void) { decisionHandler(.grant) }
+    func webView(_ w: WKWebView, runJavaScriptAlertPanelWithMessage m: String, initiatedByFrame f: WKFrameInfo, completionHandler: @escaping () -> Void) {
+        let a = UIAlertController(title: nil, message: m, preferredStyleOK: ()) ; completionHandler()
+    }
+    func webView(_ w: WKWebView, decidePolicyFor n: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
+        if let u = n.request.url, ["tel","mailto","sms"].contains(u.scheme ?? "") { UIApplication.shared.open(u); decisionHandler(.cancel); return }
+${SW('nav')}
+        decisionHandler(.allow)
+    }
+}
+`.replace(/        let a = UIAlertController.*\n/,'        let a = UIAlertController(title: nil, message: m, preferredStyle: .alert)\n        a.addAction(UIAlertAction(title: "OK", style: .default) { _ in completionHandler() })\n        present(a, animated: true)\n').replace(' ; completionHandler()\n','');
+ if(FOLD_ON())swift+=FSW();
+ const wf=`name: Build IPA
+on: workflow_dispatch
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: brew install xcodegen
+      - run: xcodegen generate
+      - name: Build
+        run: |
+          xcodebuild -project App.xcodeproj -scheme App -configuration Release -sdk iphoneos -derivedDataPath build CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build
+          mkdir Payload && cp -R build/Build/Products/Release-iphoneos/App.app Payload/
+          zip -qr ${safe($('name').value)}.ipa Payload
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ipa
+          path: "*.ipa"
+`;
+ if(ICON)proj.targets.App.settings.base.ASSETCATALOG_COMPILER_APPICON_NAME='AppIcon';
+ const out={'project.yml':JSON.stringify(proj,null,2),'Sources/AppDelegate.swift':swift,'www/index.html':$('html').value,'.github/workflows/ios.yml':wf};
+ if(ICON){out['Sources/Assets.xcassets/Contents.json']='{"info":{"author":"xcode","version":1}}';out['Sources/Assets.xcassets/AppIcon.appiconset/Contents.json']='{"images":[{"filename":"icon.png","idiom":"universal","platform":"ios","size":"1024x1024"}],"info":{"author":"xcode","version":1}}';out['Sources/Assets.xcassets/AppIcon.appiconset/icon.png']={b64:ICON}}
+ return out}
+async function zipProj(){try{const f=files(),z=new JSZip();for(const k in f)f[k].b64?z.file(k,f[k].b64,{base64:true}):z.file(k,f[k]);const b=await z.generateAsync({type:'blob'});dl(b,safe($('name').value)+'_xcode.zip');log('Projekt zapisany. Na Macu: xcodegen generate → otwórz w Xcode.')}catch(e){log('❌ '+e.message)}}
+function dl(b,n){const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=n;a.click()}
+const enc=s=>btoa(unescape(encodeURIComponent(s)));
+async function gh(path,opt={}){const r=await fetch('https://api.github.com'+path,{...opt,headers:{Authorization:'Bearer '+$('tok').value.trim(),Accept:'application/vnd.github+json','Content-Type':'application/json'}});return r}
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+async function cloud(){
+ $('log').textContent='';$('out').innerHTML='';$('bcloud').disabled=true;LAST={ok:false,url:'',go:0};
+ try{
+  const f=files(),repo=$('repo').value.trim(),tok=$('tok').value.trim();
+  if(!tok||!/^[\w.-]+\/[\w.-]+$/.test(repo))throw Error('Podaj token i repozytorium w formacie użytkownik/nazwa');
+  try{localStorage.setItem('hti_repo',repo);$('s_rem').checked?localStorage.setItem('hti_tok',tok):localStorage.removeItem('hti_tok')}catch(e){}
+  log('Sprawdzam token i uprawnienia…',3);if(!await testConn(true))throw Error(CONN.msg);log('Sprawdzam repozytorium…',5);
+  let r=await gh('/repos/'+repo);
+  if(r.status==404){log('Tworzę repozytorium (prywatne)…');r=await gh('/user/repos',{method:'POST',body:JSON.stringify({name:repo.split('/')[1],private:!$('s_pub').checked,auto_init:true})});if(!r.ok)throw Error('Nie można utworzyć repo: '+r.status);await sleep(2500)}
+  else if(r.status==401)throw Error('Nieprawidłowy token');else if(!r.ok)throw Error('Błąd GitHub '+r.status);
+  const br=(await(await gh('/repos/'+repo)).json()).default_branch;let i=0;
+  for(const p in f){let sha;const g=await gh(`/repos/${repo}/contents/${p}?ref=${br}`);if(g.ok)sha=(await g.json()).sha;
+   const u=await gh(`/repos/${repo}/contents/${p}`,{method:'PUT',body:JSON.stringify({message:'Aktualizacja '+p,content:f[p].b64||enc(f[p]),sha,branch:br})});
+   if(!u.ok)throw Error(`Wysyłanie ${p} nie powiodło się (${u.status}). Czy token ma uprawnienie workflow?`);log('✓ '+p,10+(++i)*10)}
+  const t0=Date.now()-5000;await sleep(2000);
+  const d=await gh(`/repos/${repo}/actions/workflows/ios.yml/dispatches`,{method:'POST',body:JSON.stringify({ref:br})});
+  if(d.status!=204)throw Error('Nie udało się uruchomić buildu ('+d.status+')');
+  LAST.go=1;log('Build uruchomiony na macOS…',55);let run;
+  for(let n=0;n<120;n++){await sleep(6000);const rr=await(await gh(`/repos/${repo}/actions/runs?event=workflow_dispatch&per_page=5`)).json();
+   run=(rr.workflow_runs||[]).find(x=>new Date(x.created_at)>t0);if(!run)continue;
+   log(`  status: ${run.status}${run.conclusion?' / '+run.conclusion:''}`,Math.min(90,55+n));if(run.status=='completed')break}
+  if(run)LAST.url=run.html_url;if(!run||run.conclusion!='success'){$('out').innerHTML=run?`<a href="${run.html_url}" target="_blank">Zobacz logi buildu</a>`:'';throw Error('Build nie zakończył się sukcesem')}
+  log('Pobieram artefakt…',92);
+  const a=(await(await gh(`/repos/${repo}/actions/runs/${run.id}/artifacts`)).json()).artifacts[0];
+  try{const zr=await gh(`/repos/${repo}/actions/artifacts/${a.id}/zip`);if(!zr.ok)throw 0;const z=await JSZip.loadAsync(await zr.arrayBuffer());const n=Object.keys(z.files).find(x=>x.endsWith('.ipa'));
+   dl(await z.files[n].async('blob'),n);LAST.ok=true;log('✅ Gotowe! Plik '+n+' zapisany.',100)}
+  catch(e){LAST.ok=true;log('⚠️ Przeglądarka zablokowała pobranie — pobierz ręcznie z GitHuba.',100);$('out').innerHTML=`<a href="${run.html_url}" target="_blank">Otwórz run → sekcja Artifacts</a>`}
+ }catch(e){log('❌ '+e.message)}hist();$('bcloud').disabled=false}
+try{$('repo').value=localStorage.getItem('hti_repo')||''}catch(e){}
+/* ===== v2.0 ===== */
+let ICON='',LAST={},_t;const ST='hti_state';
+function toast(m){const t=$('toast');t.textContent=m;t.classList.add('on');setTimeout(()=>t.classList.remove('on'),2200)}
+function theme(){document.documentElement.dataset.theme=$('s_theme').value;document.documentElement.style.setProperty('--ac',$('s_ac').value)}
+function snap(){const o={};document.querySelectorAll('input[id],select[id],textarea[id]').forEach(e=>{if(['tok','file','ico','pfile','psearch'].includes(e.id))return;o[e.id]=e.type=='checkbox'?e.checked:e.value});return o}
+function restore(o){for(const k in o){const e=$(k);if(!e)continue;if(e.type=='checkbox')e.checked=o[k];else e.value=o[k]}theme();upd();pcnt()}
+function save(){clearTimeout(_t);_t=setTimeout(()=>{try{localStorage.setItem(ST,JSON.stringify(snap()))}catch(e){}},400)}
+document.addEventListener('input',()=>{theme();save()});document.addEventListener('change',()=>{theme();save()});
+function pfilter(){const q=$('psearch').value.toLowerCase();document.querySelectorAll('#perms .perm').forEach(r=>r.style.display=r.dataset.k.toLowerCase().includes(q)?'':'none')}
+function pcnt(){$('pcnt').textContent=PERMS.filter((p,i)=>$('p'+i).checked).length+' / '+PERMS.length+' zaznaczonych'}
+function pset(m){const media=['NSCameraUsageDescription','NSMicrophoneUsageDescription','NSPhotoLibraryUsageDescription','NSPhotoLibraryAddUsageDescription'];PERMS.forEach((p,i)=>$('p'+i).checked=m=='all'||(m=='media'&&media.includes(p[0])));pcnt();save()}
+function setIcon(d){ICON=d;$('icoP').src='data:image/png;base64,'+d}
+$('ico').onchange=e=>{const f=e.target.files[0];if(!f)return;const im=new Image();im.onload=()=>{if(Math.min(im.width,im.height)<512){toast('Ikona za mała (min. 512 px)');return}const c=document.createElement('canvas');c.width=c.height=1024;const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,1024,1024);x.drawImage(im,0,0,1024,1024);setIcon(c.toDataURL('image/png').split(',')[1]);toast('Ikona gotowa (1024×1024)')};im.src=URL.createObjectURL(f)};
+function exportP(){const o=snap();if(ICON)o.__icon=ICON;dl(new Blob([JSON.stringify(o,null,1)],{type:'application/json'}),safe($('name').value)+'_profil.json');toast('Profil zapisany')}
+$('pfile').onchange=async e=>{try{const o=JSON.parse(await e.target.files[0].text());if(o.__icon){setIcon(o.__icon);delete o.__icon}restore(o);save();toast('Profil wczytany')}catch(x){toast('Nieprawidłowy plik profilu')}};
+function resetAll(){if(!confirm('Przywrócić ustawienia fabryczne? Wszystkie dane zostaną usunięte.'))return;try{localStorage.clear()}catch(e){}location.reload()}
+function prev(){try{const f=files(),p=$('pv');p.style.display='block';p.textContent=f['project.yml']}catch(e){toast(e.message)}}
+function copyLog(){try{navigator.clipboard.writeText($('log').textContent);toast('Log skopiowany')}catch(e){toast('Nie można skopiować')}}
+function pre(){const h=$('html').value,it=[],add=(s,t)=>it.push([s,t]);
+ add($('name').value.trim()?1:0,'Nazwa aplikacji');
+ add(/^[A-Za-z][\w-]*(\.[A-Za-z][\w-]*)+$/.test($('bid').value)?1:0,'Bundle ID: '+$('bid').value);
+ add(h.trim()?1:0,'Kod HTML: '+(h.length/1024).toFixed(1)+' KB');
+ if(h.trim()){add(/name=["']viewport/i.test(h)?1:2,'Meta viewport');add(h.length<5e6?1:2,'Rozmiar poniżej 5 MB')}
+ add(1,'Uprawnienia: '+PERMS.filter((p,i)=>$('p'+i).checked).length);
+ add(PERMS.every((p,i)=>!$('p'+i).checked||$('pt'+i).value.trim())?1:0,'Teksty zgód uzupełnione');
+ add(ICON?1:2,'Ikona aplikacji');add($('tok').value.trim()?1:2,'Token GitHub');add(/^[\w.-]+\/[\w.-]+$/.test($('repo').value.trim())?1:2,'Repozytorium GitHub');
+ $('pre').innerHTML=it.map(([s,t])=>`<div class="pf">${['❌','✅','⚠️'][s]} ${t}</div>`).join('')}
+function hshow(){let h=[];try{h=JSON.parse(localStorage.getItem('hti_hist')||'[]')}catch(e){}$('hist').innerHTML=h.length?h.map(x=>`<div class="hi">${x.ok?'✅':'❌'} <b>${x.n}</b> · ${x.b}<br>${x.t}${x.u?` · <a href="${x.u}" target="_blank">logi</a>`:''}</div>`).join(''):'Brak buildów.'}
+function hist(){if(!LAST.go)return;let h=[];try{h=JSON.parse(localStorage.getItem('hti_hist')||'[]')}catch(e){}h.unshift({t:new Date().toLocaleString('pl-PL'),n:$('name').value,b:$('bid').value,ok:LAST.ok,u:LAST.url});try{localStorage.setItem('hti_hist',JSON.stringify(h.slice(0,15)))}catch(e){}hshow()}
+const bgc=()=>{const h=$('s_bg').value.replace('#','');return [0,2,4].map(i=>(parseInt(h.substr(i,2),16)/255).toFixed(3))};
+function SW(k){const q=id=>$(id).checked,o=[];
+ if(k=='cfg'){
+  if(q('s_zoom'))o.push('c.userContentController.addUserScript(WKUserScript(source: #"var m=document.querySelector("meta[name=viewport]");if(m){m.content+=",maximum-scale=1,user-scalable=no"}"#, injectionTime: .atDocumentEnd, forMainFrameOnly: true))');
+  const ua=$('s_ua').value.replace(/[\\"]/g,'').trim();if(ua)o.push('c.applicationNameForUserAgent = "'+ua+'"');
+  if(q('s_awake'))o.push('UIApplication.shared.isIdleTimerDisabled = true')}
+ if(k=='web'){o.push('web.isOpaque = false','web.backgroundColor = .clear','web.scrollView.backgroundColor = .clear');
+  if(q('s_bounce'))o.push('web.scrollView.bounces = false');
+  if(q('s_swipe'))o.push('web.allowsBackForwardNavigationGestures = true');
+  if(q('s_inspect'))o.push('if #available(iOS 16.4, *) { web.isInspectable = true }')}
+ if(k=='nav'&&q('s_ext'))o.push('if n.navigationType == .linkActivated, let u = n.request.url, ["http","https"].contains(u.scheme ?? "") { UIApplication.shared.open(u); decisionHandler(.cancel); return }');
+ return o.map(x=>'        '+x).join('\n')}
+try{const s=localStorage.getItem(ST);if(s)restore(JSON.parse(s));const t=localStorage.getItem('hti_tok');if(t){$('tok').value=t;$('s_rem').checked=true}}catch(e){}
+theme();pcnt();hshow();
+/* ===== v2.1: przewodnik + test połączenia ===== */
+let CONN={ok:null,msg:''},_g;
+const L={signup:'https://github.com/signup',token:'https://github.com/settings/tokens/new?scopes=repo,workflow&description=HTML-to-IPA',newrepo:'https://github.com/new',billing:'https://docs.github.com/en/billing',bid:'https://developer.apple.com/documentation/bundleresources/information_property_list/cfbundleidentifier',sideload:'https://sideloadly.io/',alt:'https://altstore.io/',troll:'https://github.com/opa334/TrollStore',devmode:'https://developer.apple.com/documentation/xcode/enabling-developer-mode-on-a-device',dev:'https://developer.apple.com/programs/'};
+function copyT(t){try{navigator.clipboard.writeText(t);toast('Skopiowano link')}catch(e){toast(t)}}
+function go(t,id){document.querySelector('nav button[data-t="'+t+'"]').click();if(id)setTimeout(()=>{const e=$(id);if(e){e.scrollIntoView({block:'center'});e.focus()}},60)}
+function getMan(){try{return JSON.parse(localStorage.getItem('hti_man')||'{}')}catch(e){return{}}}
+function manSet(k){const m=getMan();m[k]=!m[k];try{localStorage.setItem('hti_man',JSON.stringify(m))}catch(e){}guide()}
+async function testConn(quiet){const tok=$('tok').value.trim();CONN={ok:false,msg:''};
+ try{if(!tok){CONN.msg='Brak tokenu GitHub';throw 0}
+  const r=await gh('/user');
+  if(r.status==401){CONN.msg='Token nieprawidłowy lub wygasł';throw 0}
+  if(!r.ok){CONN.msg='GitHub odpowiedział błędem '+r.status;throw 0}
+  const u=await r.json(),sc=r.headers.get('x-oauth-scopes');
+  if(sc!==null){const a=sc.split(',').map(x=>x.trim());if(!a.includes('repo')||!a.includes('workflow')){CONN.msg='Token nie ma uprawnień repo + workflow (ma: '+(sc||'brak')+'). Utwórz go ponownie linkiem z kroku 2.';throw 0}}
+  CONN.ok=true;CONN.msg='Połączono jako '+u.login+(sc===null?' (token fine-grained: potrzebne Contents, Workflows i Actions z dostępem Read/Write)':'');
+  if(!$('repo').value.trim())$('repo').value=u.login+'/'+safe($('name').value).toLowerCase()+'-ios';
+ }catch(e){if(!CONN.msg)CONN.msg='Brak połączenia z GitHubem — sprawdź internet'}
+ if(!quiet)toast(CONN.msg);guide();return CONN.ok}
+function guide(){
+ const tok=$('tok').value.trim(),m=getMan(),h=$('html').value.trim(),np=PERMS.filter((p,i)=>$('p'+i).checked).length;
+ const bid=/^[A-Za-z][\w-]*(\.[A-Za-z][\w-]*)+$/.test($('bid').value)&&!!$('name').value.trim();
+ const S=[
+ {id:'acc',t:'Załóż konto GitHub',d:'Darmowe konto wystarczy — tam zbuduje się aplikacja (maszyna z macOS i Xcode). Masz już konto? Kliknij „Mam to już”.',ok:!!(m.acc||tok),req:1,links:[['Załóż konto GitHub',L.signup]],man:1},
+ {id:'tok',t:'Utwórz token dostępu',d:'Link otwiera gotowy formularz z zaznaczonymi uprawnieniami repo i workflow. Przewiń na dół, kliknij „Generate token”, skopiuj token (zaczyna się od ghp_) i wklej go w zakładce Build.',ok:/^(ghp_|gho_|github_pat_)/.test(tok),req:1,links:[['Utwórz token',L.token]],go:[3,'tok']},
+ {id:'conn',t:'Przetestuj połączenie',d:'Sprawdza, czy token działa i ma uprawnienia repo + workflow. Podpowie też nazwę repozytorium.',ok:CONN.ok===true,req:1,btn:['🔌 Testuj połączenie','testConn()'],note:CONN.msg?(CONN.ok?'✅ ':'❌ ')+CONN.msg:''},
+ {id:'repo',t:'Repozytorium na build',d:'Format użytkownik/nazwa. Jeśli nie istnieje, zostanie utworzone automatycznie (domyślnie prywatne). Prywatne repo zużywa limit minut GitHub Actions (maszyny macOS liczą się wielokrotnie — sprawdź aktualne zasady). Publiczne nie ma limitu, ale kod będzie widoczny — opcja w Ustawieniach.',ok:/^[\w.-]+\/[\w.-]+$/.test($('repo').value.trim()),req:1,links:[['Limity i rozliczenia',L.billing],['Utwórz repo ręcznie',L.newrepo]],go:[3,'repo']},
+ {id:'app',t:'Nazwa i Bundle ID',d:'Bundle ID to unikalny identyfikator w formacie com.firma.aplikacja (litery, cyfry, myślniki; zaczyna się od litery).',ok:bid,req:1,links:[['Czym jest Bundle ID',L.bid]],go:[0,'bid']},
+ {id:'html',t:'Kod HTML',d:'Wklej kod lub wczytaj plik .html. Aplikacja działa offline, więc zasoby (obrazy, skrypty) najlepiej wkleić do pliku.',ok:!!h,req:1,go:[1,'html']},
+ {id:'perm',t:'Uprawnienia',d:'Zaznacz tylko to, czego używa Twój kod (aparat, mikrofon, lokalizacja…). Bez wpisu w Info.plist iOS zamknie aplikację przy próbie dostępu. Wybrano: '+np+'.',ok:true,req:0,go:[2]},
+ {id:'ico',t:'Ikona aplikacji',d:'PNG lub JPG co najmniej 512×512 — zostanie przeskalowany do 1024×1024.',ok:!!ICON,req:0,go:[0]},
+ {id:'build',t:'Zbuduj IPA',d:'Build na macOS w chmurze trwa zwykle kilka minut, a gotowy plik .ipa pobiera się automatycznie.',ok:LAST.ok===true,req:0,go:[3]},
+ {id:'inst',t:'Zainstaluj na iPhonie / iPadzie',d:'Plik .ipa jest niepodpisany, a Apple wymaga podpisu. Najprościej: Sideloadly (Windows/Mac) albo AltStore z darmowym Apple ID (aplikacja działa 7 dni, potem odnów) lub płatny Apple Developer Program. TrollStore instaluje bez podpisu, ale tylko na wybranych wersjach iOS. Na iOS 16+ włącz Tryb programisty.',ok:!!m.inst,req:0,man:1,links:[['Sideloadly',L.sideload],['AltStore',L.alt],['TrollStore',L.troll],['Tryb programisty',L.devmode],['Apple Developer Program',L.dev]]}];
+ const rq=S.filter(s=>s.req),pc=Math.round(rq.filter(s=>s.ok).length/rq.length*100);
+ $('gb').style.width=pc+'%';$('gt').textContent='Gotowość do buildu: '+pc+'%';
+ $('gs').innerHTML=pc==100?'✅ Wszystko gotowe. <button onclick="go(3)">🚀 Przejdź do Build</button>':'Wykonuj kroki od góry — każdy sam zmienia status na ✅.';
+ $('guide').innerHTML=S.map((s,i)=>`<div class="card"><b>${s.ok?'✅':(s.req?'⬜':'➖')} ${i+1}. ${s.t}</b>${s.req?'':' <span class="note">(opcjonalnie)</span>'}<p class="note">${s.d}</p>${s.note?`<p class="note">${s.note}</p>`:''}<div>${(s.links||[]).map(l=>`<a class="btn" href="${l[1]}" target="_blank" rel="noopener">🔗 ${l[0]}</a><button class="s cp" onclick="copyT('${l[1]}')">📋</button>`).join('')}${s.btn?`<button onclick="${s.btn[1]}">${s.btn[0]}</button>`:''}${s.go?`<button class="s" onclick="go(${s.go[0]},'${s.go[1]||''}')">➡️ Przejdź</button>`:''}${s.man?`<button class="s" onclick="manSet('${s.id}')">${m[s.id]?'↩️ Cofnij':'✔️ Mam to już'}</button>`:''}</div></div>`).join('')}
+document.addEventListener('input',()=>{clearTimeout(_g);_g=setTimeout(guide,300)});
+guide();
+/* ===== v2.2: dostęp do folderu ===== */
+const FOLD_ON=()=>$('f_read').checked||$('f_write').checked;
+function FCFG(){if(!FOLD_ON())return '';
+ const js=`window.IPAFolder={_i:0,_c:{},_call:function(a,p){return new Promise(function(r){var i=++IPAFolder._i;IPAFolder._c[i]=r;p=p||{};p.id=i;p.action=a;webkit.messageHandlers.folder.postMessage(p)})},_done:function(i,v){IPAFolder._c[i](v);delete IPAFolder._c[i]},pick:function(){return this._call('pick')},list:function(){return this._call('list')},read:function(n,b){return this._call('read',{name:n,b64:!!b})},write:function(n,t){return this._call('write',{name:n,text:t})},writeBase64:function(n,d){return this._call('write',{name:n,text:'',b64:d})}};`;
+ return '\n        c.userContentController.add(self, name: "folder")\n        c.userContentController.addUserScript(WKUserScript(source: #"'+js+'"#, injectionTime: .atDocumentStart, forMainFrameOnly: true))'}
+function FSW(){return `
+let FOLDER_READ = ${$('f_read').checked}
+let FOLDER_WRITE = ${$('f_write').checked}
+var folderPending: ((URL?) -> Void)?
+
+extension WebVC: WKScriptMessageHandler, UIDocumentPickerDelegate {
+    func userContentController(_ u: WKUserContentController, didReceive m: WKScriptMessage) {
+        guard let b = m.body as? [String: Any], let id = b["id"] as? Int, let a = b["action"] as? String else { return }
+        func reply(_ o: [String: Any]) {
+            if let d = try? JSONSerialization.data(withJSONObject: o), let s = String(data: d, encoding: .utf8) {
+                web.evaluateJavaScript("IPAFolder._done(\\(id), \\(s))")
+            }
+        }
+        if a == "pick" {
+            let p = UIDocumentPickerViewController(documentTypes: ["public.folder"], in: .open)
+            p.delegate = self
+            folderPending = { url in
+                if let url = url, url.startAccessingSecurityScopedResource() {
+                    defer { url.stopAccessingSecurityScopedResource() }
+                    if let bm = try? url.bookmarkData() { UserDefaults.standard.set(bm, forKey: "folderBM") }
+                    reply(["ok": true, "name": url.lastPathComponent])
+                } else {
+                    reply(["ok": false, "error": "Nie wybrano folderu"])
+                }
+            }
+            present(p, animated: true)
+            return
+        }
+        guard let bm = UserDefaults.standard.data(forKey: "folderBM") else {
+            reply(["ok": false, "error": "Najpierw wybierz folder: IPAFolder.pick()"]); return
+        }
+        var stale = false
+        guard let dir = try? URL(resolvingBookmarkData: bm, bookmarkDataIsStale: &stale), dir.startAccessingSecurityScopedResource() else {
+            reply(["ok": false, "error": "Brak dostępu do folderu — wybierz go ponownie"]); return
+        }
+        defer { dir.stopAccessingSecurityScopedResource() }
+        let name = ((b["name"] as? String) ?? "").replacingOccurrences(of: "/", with: "_")
+        let url = dir.appendingPathComponent(name)
+        do {
+            switch a {
+            case "list":
+                guard FOLDER_READ else { reply(["ok": false, "error": "Odczyt z folderu jest wyłączony"]); return }
+                reply(["ok": true, "data": try FileManager.default.contentsOfDirectory(atPath: dir.path)])
+            case "read":
+                guard FOLDER_READ else { reply(["ok": false, "error": "Odczyt z folderu jest wyłączony"]); return }
+                let d = try Data(contentsOf: url)
+                let asB64 = (b["b64"] as? Bool) ?? false
+                reply(["ok": true, "data": asB64 ? d.base64EncodedString() : (String(data: d, encoding: .utf8) ?? "")])
+            case "write":
+                guard FOLDER_WRITE else { reply(["ok": false, "error": "Zapis do folderu jest wyłączony"]); return }
+                if let t = b["b64"] as? String, let d = Data(base64Encoded: t) {
+                    try d.write(to: url)
+                } else {
+                    try ((b["text"] as? String) ?? "").write(to: url, atomically: true, encoding: .utf8)
+                }
+                reply(["ok": true])
+            default:
+                reply(["ok": false, "error": "Nieznana akcja"])
+            }
+        } catch {
+            reply(["ok": false, "error": error.localizedDescription])
+        }
+    }
+    func documentPicker(_ c: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) { folderPending?(urls.first); folderPending = nil }
+    func documentPickerWasCancelled(_ c: UIDocumentPickerViewController) { folderPending?(nil); folderPending = nil }
+}
+`}
+</script></body></html>
